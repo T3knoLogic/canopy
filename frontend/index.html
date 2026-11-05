@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#020504" />
+    <meta name="color-scheme" content="dark" />
+    <title>Canopy — Bonsai OS Wallet</title>
+    <meta
+      name="description"
+      content="Hold the grove. Non-custodial ICP wallet for Bonsai OS — tokens, NFTs, swaps, and cycles."
+    />
+    <meta name="application-name" content="Canopy" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Canopy" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/brand/favicon-192.png" color="#3d8b5f" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Canopy" />
+    <meta property="og:title" content="Canopy — Bonsai OS Wallet" />
+    <meta
+      property="og:description"
+      content="Hold the grove. Non-custodial ICP wallet for Bonsai OS — tokens, NFTs, swaps, and cycles."
+    />
+    <meta
+      property="og:url"
+      content="https://7h6n6-eqaaa-aaaau-ag6da-cai.icp0.io/"
+    />
+    <meta
+      property="og:image"
+      content="https://7h6n6-eqaaa-aaaau-ag6da-cai.icp0.io/brand/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Canopy — Bonsai OS Wallet" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Canopy — Bonsai OS Wallet" />
+    <meta
+      name="twitter:description"
+      content="Hold the grove. Non-custodial ICP wallet for Bonsai OS — tokens, NFTs, swaps, and cycles."
+    />
+    <meta
+      name="twitter:image"
+      content="https://7h6n6-eqaaa-aaaau-ag6da-cai.icp0.io/brand/og-image.png"
+    />
+    <style>
+      html {
+        background: #020504;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        background:
+          radial-gradient(ellipse 110% 70% at 50% -8%, rgba(61, 139, 95, 0.18), transparent 55%),
+          radial-gradient(ellipse 55% 40% at 8% 78%, rgba(26, 74, 50, 0.28), transparent 50%),
+          #020504;
+        color: #e8f5ef;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var h = location.hostname;
+          if (h.endsWith(".ic0.app")) {
+            location.replace(
+              location.href.replace(".ic0.app", ".icp0.io"),
+            );
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spectra Loom — Agent Spot</title>
+  <meta name="description" content="A fictional cyberpunk cipher atelier guided by Agent Spot. Invented seals made of glass, light, and timing." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="view" tabindex="0" aria-label="Spectra Loom atelier"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="scan" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="hud">
+    <div class="brand">
+      <span class="kicker">Fictional grove cipher</span>
+      <h1>Spectra Loom</h1>
+    </div>
+    <div class="chamber" id="chamberLabel">Atelier</div>
+    <div class="pips" id="pips" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </header>
+
+  <p class="tap" id="tap" hidden>TAP</p>
+
+  <section class="comms" aria-label="Agent Spot">
+    <div class="who">Agent Spot</div>
+    <p id="caption" aria-live="polite">Black kit. Cyan visor. The atelier is awake.</p>
+    <p id="status" class="status"></p>
+    <button type="button" id="continue" hidden>Continue</button>
+  </section>
+
+  <footer class="controls">
+    <button type="button" id="voice">Voice on</button>
+    <button type="button" id="sound">Sound on</button>
+    <button type="button" id="skip" hidden>Skip briefing</button>
+    <button type="button" id="repeat" hidden>Repeat line</button>
+    <button type="button" id="reset" hidden>Reset seal</button>
+    <span class="keys" id="keys"></span>
+  </footer>
+
+  <div class="title-card" id="titleCard">
+    <div class="panel">
+      <div class="kicker">Agent Spot · Grove atelier</div>
+      <h2>Spectra Loom</h2>
+      <p>
+        A cyberpunk cipher you can turn, trace, slide, and time.
+        Glass rings, a night-market constellation, depth plates, and a halo.
+      </p>
+      <p class="fine">
+        Every seal in this room was invented for play. It is not a depiction of physical hardware.
+      </p>
+      <button type="button" id="begin" autofocus>Begin briefing</button>
+    </div>
+  </div>
+
+  <div class="win-card" id="winCard" hidden>
+    <div class="panel">
+      <div class="kicker">Seal read</div>
+      <h2>The light bonsai opens</h2>
+      <p>You finished the atelier. The prize is the story closing in light.</p>
+      <button type="button" id="again">Walk it again</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+(
+  record {
+    swapFeeBps = 20 : nat;
+    nftSendFeeE8s = 10_000 : nat;
+    cycleMarginBps = 25 : nat;
+    treasury = principal "j7j3j-2iaaa-aaaau-agwla-cai";
+    maxSwapNotionalE8s = 50_000_000_000 : nat;
+    maxCycleTopUpE8s = 10_000_000_000 : nat;
+  }
+)

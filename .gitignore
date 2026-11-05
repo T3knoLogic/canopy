@@ -1,0 +1,8 @@
+# Ignore
+.dfx/
+.env
+frontend/dist/
+frontend/node_modules/
+*.wasm
+reports-canopy-build.txt
+frontend/tsconfig.tsbuildinfo

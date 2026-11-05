@@ -1,0 +1,13 @@
+{
+  "name": "@t3kno/canopy-connect",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Open the hosted Canopy ICP wallet from another app. Does not sign or move funds.",
+  "license": "MIT",
+  "main": "./canopy.js",
+  "exports": {
+    ".": "./canopy.js"
+  },
+  "files": ["canopy.js", "README.md"]
+}

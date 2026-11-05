@@ -1,0 +1,44 @@
+[
+  {
+    "match": "**/*",
+    "security_policy": "standard",
+    "disable_security_policy_warning": true,
+    "headers": {
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.icp0.io https://*.raw.icp0.io https://*.ic0.app https://*.raw.ic0.app; media-src 'self' data: blob: https://*.icp0.io https://*.raw.icp0.io https://*.ic0.app https://*.raw.ic0.app; connect-src 'self' https://icp0.io https://*.icp0.io https://*.raw.icp0.io https://icp-api.io https://*.ic0.app https://*.raw.ic0.app https://identity.ic0.app https://id.ai https://api.icpswap.com https://api.coingecko.com; frame-src https://identity.ic0.app https://id.ai; frame-ancestors 'self' https://t3kno-logic.xyz https://www.t3kno-logic.xyz https://u2jsa-baaaa-aaaau-aghea-cai.icp0.io https://u2jsa-baaaa-aaaau-aghea-cai.ic0.app https://2dxs4-nyaaa-aaaau-agzda-cai.icp0.io https://2dxs4-nyaaa-aaaau-agzda-cai.ic0.app https://bonsaios.app https://www.bonsaios.app https://tnyst-jqaaa-aaaau-afpfq-cai.icp0.io https://tnyst-jqaaa-aaaau-afpfq-cai.ic0.app https://oc.app https://5axgh-oqaaa-aaaac-qgeoa-cai.icp0.io https://5axgh-oqaaa-aaaac-qgeoa-cai.ic0.app https://iabi6-zqaaa-aaaau-agwpq-cai.icp0.io https://iabi6-zqaaa-aaaau-agwpq-cai.ic0.app http://localhost:* http://127.0.0.1:*; worker-src 'self'; object-src 'none'; base-uri 'self'"
+    },
+    "allow_raw_access": false
+  },
+  {
+    "match": "**/*.js",
+    "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "**/*.css",
+    "headers": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  },
+  {
+    "match": "brand/**/*",
+    "headers": {
+      "Cache-Control": "public, max-age=86400"
+    }
+  },
+  {
+    "match": "manifest.webmanifest",
+    "headers": {
+      "Content-Type": "application/manifest+json",
+      "Cache-Control": "public, max-age=3600"
+    }
+  },
+  {
+    "match": "sw.js",
+    "headers": {
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Service-Worker-Allowed": "/"
+    }
+  }
+]

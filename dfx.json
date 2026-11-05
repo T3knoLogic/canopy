@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "dfx": "0.30.2",
+  "canisters": {
+    "canopy_fees": {
+      "type": "motoko",
+      "main": "backend/src/main.mo",
+      "args": "--incremental-gc"
+    },
+    "canopy_frontend": {
+      "type": "assets",
+      "source": ["frontend/dist"],
+      "dependencies": ["canopy_fees"]
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://icp0.io"],
+      "type": "persistent"
+    }
+  },
+  "output_env_file": ".env"
+}
