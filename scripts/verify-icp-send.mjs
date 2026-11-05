@@ -150,16 +150,29 @@ const ftSendBody = sendTs.slice(
   sendTs.indexOf("const icrc7TransferIdl"),
 );
 if (
+  ledgerTs.includes("ftSendLedgerLegs") &&
   ftSendBody.includes("assertFtSendWithinBalance") &&
   ftSendBody.indexOf("assertFtSendWithinBalance") <
-    ftSendBody.indexOf("if (opts.payFee)")
+    ftSendBody.indexOf("amount: feeAmount")
 ) {
-  ok("send.ts balance preflight", "before Canopy fee leg");
+  ok("send.ts balance preflight", "before Canopy fee payment; one leg when micro-fee is zero");
 } else {
   fail(
     "send.ts balance preflight",
     "executeFtSend must call assertFtSendWithinBalance before the fee payment",
   );
+}
+
+if (destTs.includes("parseIcrcAccountText") && destTs.includes("subaccount")) {
+  ok("destinations.ts ICRC account", "checksummed subaccount");
+} else {
+  fail("destinations.ts ICRC account", "must accept principal-checksum.subaccount");
+}
+
+if (sendTs.includes("to: dest.owner") && sendTs.includes("toSubaccount: dest.subaccount")) {
+  ok("send.ts ICRC subaccount", "owner + subaccount on icrc1_transfer");
+} else {
+  fail("send.ts ICRC subaccount", "principal path must pass dest.owner and dest.subaccount");
 }
 
 if (

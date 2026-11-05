@@ -113,30 +113,34 @@ export async function executeFtSend(opts: {
     );
   }
 
-  // Refuse before the fee leg when the default subaccount cannot cover
-  // gross amount + two ledger fees. A short balance used to pay the micro-fee
-  // and then fail the recipient transfer.
+  let feeBlock: bigint | undefined;
+  let feeAmount = 0n;
+  let quotedTreasury = "";
+  if (opts.payFee) {
+    const fee = await quoteFtSendFee(opts.amount);
+    feeAmount = fee.feeAmount;
+    quotedTreasury = fee.treasury;
+  }
+
+  // Refuse before any fee payment. A zero micro-fee is a single ledger leg.
   await assertFtSendWithinBalance({
     owner: opts.identity.getPrincipal(),
     ledgerId: opts.ledgerId,
     grossAmount: opts.amount,
+    canopyFee: feeAmount,
   });
 
-  let feeBlock: bigint | undefined;
-  let feeAmount = 0n;
   if (opts.payFee) {
-    const fee = await quoteFtSendFee(opts.amount);
-    feeAmount = fee.feeAmount;
     if (feeAmount > 0n) {
       if (feeAmount >= opts.amount) {
         throw new Error("Amount too small to cover Canopy micro-fee");
       }
-      assertTreasury(fee.treasury);
+      assertTreasury(quotedTreasury);
       try {
         feeBlock = await transferIcrc1({
           identity: opts.identity,
           ledgerId: opts.ledgerId,
-          to: fee.treasury,
+          to: quotedTreasury,
           amount: feeAmount,
         });
       } catch (e) {
@@ -174,8 +178,9 @@ export async function executeFtSend(opts: {
     const block = await transferIcrc1({
       identity: opts.identity,
       ledgerId: opts.ledgerId,
-      to: dest.value,
+      to: dest.owner,
       amount: net,
+      toSubaccount: dest.subaccount,
     });
     return { block, feeBlock, feeAmount };
   } catch (e) {
@@ -240,6 +245,7 @@ export async function executeIcrc7Send(opts: {
   ledgerId: string;
   tokenId: bigint;
   to: string;
+  toSubaccount?: [] | [Uint8Array];
   payFee: boolean;
 }): Promise<{ ok: boolean; feeBlock?: bigint; detail: string }> {
   // User-confirmed NFT send (SpendReview) — allow the collection for this session.
@@ -249,6 +255,13 @@ export async function executeIcrc7Send(opts: {
   if (opts.payFee) {
     const fee = await quoteNftSendFeeE8s();
     if (fee.feeE8s > 0n) {
+      await assertFtSendWithinBalance({
+        owner: opts.identity.getPrincipal(),
+        ledgerId: ICP_LEDGER,
+        grossAmount: fee.feeE8s,
+        canopyFee: 0n,
+        label: "the Canopy NFT fee",
+      });
       assertTreasury(fee.treasury);
       feeBlock = await transferIcrc1({
         identity: opts.identity,
@@ -272,7 +285,7 @@ export async function executeIcrc7Send(opts: {
   }) as {
     icrc7_transfer: (
       args: Array<{
-        to: { owner: Principal; subaccount: [] };
+        to: { owner: Principal; subaccount: [] | [Uint8Array] };
         token_id: bigint;
         memo: [];
         from_subaccount: [];
@@ -282,7 +295,10 @@ export async function executeIcrc7Send(opts: {
   };
   const rows = await actor.icrc7_transfer([
     {
-      to: { owner: Principal.fromText(opts.to), subaccount: [] },
+      to: {
+        owner: Principal.fromText(opts.to),
+        subaccount: opts.toSubaccount ?? [],
+      },
       token_id: opts.tokenId,
       memo: [],
       from_subaccount: [],
@@ -325,6 +341,13 @@ export async function executeExtSend(opts: {
   if (opts.payFee) {
     const fee = await quoteNftSendFeeE8s();
     if (fee.feeE8s > 0n) {
+      await assertFtSendWithinBalance({
+        owner: opts.identity.getPrincipal(),
+        ledgerId: ICP_LEDGER,
+        grossAmount: fee.feeE8s,
+        canopyFee: 0n,
+        label: "the Canopy NFT fee",
+      });
       assertTreasury(fee.treasury);
       feeBlock = await transferIcrc1({
         identity: opts.identity,
@@ -455,6 +478,7 @@ export type BulkNftSendResult = {
 export async function executeBulkNftSend(opts: {
   identity: Identity;
   to: string;
+  toSubaccount?: [] | [Uint8Array];
   items: BulkNftSendItem[];
   onProgress?: (p: BulkNftSendProgress) => void;
 }): Promise<BulkNftSendResult> {
@@ -478,6 +502,13 @@ export async function executeBulkNftSend(opts: {
   });
 
   if (feeQ.feeE8s > 0n) {
+    await assertFtSendWithinBalance({
+      owner: opts.identity.getPrincipal(),
+      ledgerId: ICP_LEDGER,
+      grossAmount: feeQ.feeE8s,
+      canopyFee: 0n,
+      label: "the Canopy NFT fee",
+    });
     assertTreasury(feeQ.treasury);
     feeBlock = await transferIcrc1({
       identity: opts.identity,
@@ -514,6 +545,7 @@ export async function executeBulkNftSend(opts: {
               ledgerId: item.contractId,
               tokenId: BigInt(item.tokenId),
               to: opts.to.trim(),
+              toSubaccount: opts.toSubaccount,
               payFee: false,
             })
           : await executeExtSend({

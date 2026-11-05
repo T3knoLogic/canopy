@@ -8,6 +8,7 @@ import {
   isValidAccountIdChecksum,
   normalizeAccountIdHex,
 } from "./destinations";
+import { feeFromBps, MICRO_FT_SEND_BPS } from "./fees";
 
 /** Mainnet IC HTTP gateways — try next on transient transport failures only. */
 const IC_TRANSFER_HOSTS = [IC_HOST, "https://ic0.app"] as const;
@@ -338,6 +339,7 @@ export async function transferIcrc1(opts: {
   to: string;
   amount: bigint;
   memo?: Uint8Array;
+  toSubaccount?: [] | [Uint8Array];
 }): Promise<bigint> {
   assertSpendTarget(opts.ledgerId);
   if (opts.amount <= 0n) {
@@ -352,7 +354,7 @@ export async function transferIcrc1(opts: {
     const ledger = ledgerActor(agent, opts.ledgerId);
     const fee = await ledger.icrc1_fee();
     const result = await ledger.icrc1_transfer({
-      to: { owner: toOwner, subaccount: [] },
+      to: { owner: toOwner, subaccount: opts.toSubaccount ?? [] },
       fee: [fee],
       memo: opts.memo ? [opts.memo] : [],
       from_subaccount: [],
@@ -563,33 +565,55 @@ export function parseTokenAmount(raw: string, decimals: number): bigint | null {
   }
 }
 
+/** One ledger fee when the Canopy micro-fee rounds to zero; otherwise fee leg + recipient leg. */
+export function ftSendLedgerLegs(canopyFee: bigint): 1 | 2 {
+  return canopyFee > 0n ? 2 : 1;
+}
+
 /**
- * Positive proof the default subaccount can cover gross amount + two ledger fees
- * (Canopy fee leg + recipient leg). Query failure does not throw — callers must
- * not turn a flaky balance read into a send block.
+ * Refuse before a fee payment when any gateway that answered shows the default
+ * subaccount is short. A high read must not hide a short read — that paid the
+ * micro-fee and then failed the recipient transfer. If no gateway answers, do not block.
  */
 export async function assertFtSendWithinBalance(opts: {
   owner: Principal;
   ledgerId: string;
   grossAmount: bigint;
+  canopyFee: bigint;
+  /** Noun used in the refusal, e.g. "this send" or "the Canopy fee". */
+  label?: string;
 }): Promise<void> {
-  try {
-    const agent = await getAnonymousQueryAgent();
-    const ledger = ledgerActor(agent, opts.ledgerId);
-    const [balance, fee] = await Promise.all([
-      ledger.icrc1_balance_of({ owner: opts.owner, subaccount: [] }),
-      ledger.icrc1_fee(),
-    ]);
-    const need = opts.grossAmount + fee * 2n;
-    if (balance < need) {
-      throw new Error(
-        `Not enough balance for this send. It needs the amount plus two ledger fees (${need.toString()} base units; balance ${balance.toString()}). Lower the amount or tap Max. Nothing was sent.`,
-      );
+  const legs = ftSendLedgerLegs(opts.canopyFee);
+  const label = opts.label ?? "this send";
+  let short: { balance: bigint; need: bigint } | null = null;
+  let enough = 0;
+  for (const host of IC_TRANSFER_HOSTS) {
+    try {
+      const agent = await createAgent(null, host);
+      const ledger = ledgerActor(agent, opts.ledgerId);
+      const [balance, fee] = await Promise.all([
+        ledger.icrc1_balance_of({ owner: opts.owner, subaccount: [] }),
+        ledger.icrc1_fee(),
+      ]);
+      const need = opts.grossAmount + fee * BigInt(legs);
+      if (balance >= need) {
+        enough += 1;
+      } else if (!short || balance < short.balance) {
+        short = { balance, need };
+      }
+    } catch {
+      /* try the next gateway */
     }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.startsWith("Not enough balance")) throw e;
   }
+  if (!short) return;
+  const feeWord = legs === 1 ? "the ledger fee" : "two ledger fees";
+  const disagree =
+    enough > 0
+      ? " IC gateways disagree on the balance — refresh and retry."
+      : "";
+  throw new Error(
+    `Not enough balance for ${label}. It needs the amount plus ${feeWord} (${short.need.toString()} base units; balance ${short.balance.toString()}).${disagree} Nothing was sent.`,
+  );
 }
 
 export function formatToken(amount: bigint, decimals: number): string {
@@ -606,15 +630,22 @@ export function formatToken(amount: bigint, decimals: number): string {
 }
 
 /**
- * Max gross send amount that still leaves room for two ledger transfer fees
- * (fee leg + net leg). Canopy micro-fee is taken from the gross amount.
+ * Largest gross amount that still fits.
+ * Reserves two ledger fees when the Canopy micro-fee is non-zero, and one when it rounds to zero.
  */
 export function maxSpendableFtAmount(
   balance: bigint,
   ledgerFee: bigint,
+  canopyBps: bigint = MICRO_FT_SEND_BPS,
 ): bigint {
-  const reserved = ledgerFee * 2n;
-  if (balance <= reserved) return 0n;
-  return balance - reserved;
+  const room = (legs: 1 | 2) => {
+    const reserved = ledgerFee * BigInt(legs);
+    return balance > reserved ? balance - reserved : 0n;
+  };
+  const withTwo = room(2);
+  if (withTwo > 0n && feeFromBps(withTwo, canopyBps) > 0n) return withTwo;
+  const withOne = room(1);
+  if (withOne > 0n && feeFromBps(withOne, canopyBps) === 0n) return withOne;
+  return withTwo;
 }
 

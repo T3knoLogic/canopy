@@ -107,7 +107,9 @@ export function TokenSendModal({
     setDestHint(
       parsed.kind === "accountId"
         ? "ICP Account ID — send_dfx (ICP only)"
-        : "Principal — ICRC-1 transfer",
+        : parsed.label === "ICRC account"
+          ? "ICRC account — transfer includes this subaccount"
+          : "Principal — ICRC-1 transfer",
     );
   }, [to]);
 
@@ -279,7 +281,7 @@ export function TokenSendModal({
         </label>
 
         <p className="muted send-sheet__hint">
-          Max reserves two ledger transfer fees (fee + send). Canopy micro-fee
+          Max reserves one ledger fee, or two when the Canopy micro-fee is non-zero. Canopy micro-fee
           is taken from the amount and paid first — not refunded if the send
           fails. Account IDs may include spaces or dashes — we strip them.
           {receiveEstimate != null

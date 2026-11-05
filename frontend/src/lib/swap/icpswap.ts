@@ -147,30 +147,34 @@ async function verifyPoolMetadataOnHosts(
   pool: IcpSwapPoolData,
 ): Promise<void> {
   const checks = await Promise.all(
-    IC_QUERY_HOSTS.slice(0, 2).map(async (host) => {
-      const agent = await HttpAgent.create({ host });
-      const actor = Actor.createActor(poolMetaIdl, {
-        agent,
-        canisterId: pool.canisterId,
-      }) as {
-        metadata: () => Promise<
-          | {
-              ok: {
-                fee: bigint;
-                token0: { address: string; standard: string };
-                token1: { address: string; standard: string };
-              };
-            }
-          | { err: string }
-        >;
-      };
-      const r = await actor.metadata();
-      if (!("ok" in r)) return null;
-      return {
-        token0: r.ok.token0.address.toLowerCase(),
-        token1: r.ok.token1.address.toLowerCase(),
-        fee: r.ok.fee.toString(),
-      };
+    IC_QUERY_HOSTS.map(async (host) => {
+      try {
+        const agent = await HttpAgent.create({ host });
+        const actor = Actor.createActor(poolMetaIdl, {
+          agent,
+          canisterId: pool.canisterId,
+        }) as {
+          metadata: () => Promise<
+            | {
+                ok: {
+                  fee: bigint;
+                  token0: { address: string; standard: string };
+                  token1: { address: string; standard: string };
+                };
+              }
+            | { err: string }
+          >;
+        };
+        const r = await actor.metadata();
+        if (!("ok" in r)) return null;
+        return {
+          token0: r.ok.token0.address.toLowerCase(),
+          token1: r.ok.token1.address.toLowerCase(),
+          fee: r.ok.fee.toString(),
+        };
+      } catch {
+        return null;
+      }
     }),
   );
   const ok = checks.filter(Boolean);
@@ -262,7 +266,17 @@ async function getIcpSwapPoolDataForFee(
       getPoolFromHost(host, tokenA, tokenB, fee).catch(() => null),
     ),
   );
-  const ok = results.filter((r): r is IcpSwapPoolData => r != null);
+  let ok = results.filter((r): r is IcpSwapPoolData => r != null);
+  if (ok.length < 2) {
+    const retry = await Promise.all(
+      IC_QUERY_HOSTS.map((host, i) =>
+        results[i] == null
+          ? getPoolFromHost(host, tokenA, tokenB, fee).catch(() => null)
+          : Promise.resolve(results[i]),
+      ),
+    );
+    ok = retry.filter((r): r is IcpSwapPoolData => r != null);
+  }
   if (ok.length === 0) return null;
 
   const tallies = new Map<string, { count: number; sample: IcpSwapPoolData }>();
@@ -279,16 +293,12 @@ async function getIcpSwapPoolDataForFee(
   }
   if (!best) return null;
 
-  // Require agreement from at least 2 boundaries when ≥2 answered; if only 1 host answered, refuse for spend path safety
+  // Disagreeing hosts still refuse. A single factory answer is accepted only
+  // after pool metadata matches on two gateways (verifyPoolMetadataOnHosts).
   const answered = ok.length;
   if (answered >= 2 && best.count < 2) {
     throw new Error(
       "ICPSwap pool mismatch across IC gateways — refusing swap (possible query spoof)",
-    );
-  }
-  if (answered === 1) {
-    throw new Error(
-      "Only one IC gateway returned a pool — need multi-boundary consensus before approve",
     );
   }
 

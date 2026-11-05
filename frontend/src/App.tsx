@@ -1215,10 +1215,10 @@ export function App() {
       return;
     }
     if (parsedDest.kind !== "principal") {
-      setError("NFT sends require a principal destination");
+      setError("NFT sends require a principal or ICRC account");
       return;
     }
-    const dest = parsedDest.value;
+    const dest = parsedDest.owner;
     const fee = await quoteNftSendFeeE8s();
     const unverified = isUnverifiedNftCollection(sendNft.contractId);
     const isExt =
@@ -1226,6 +1226,10 @@ export function App() {
     const isIcrc7 = sendNft.standard === "icrc7";
     if (!isExt && !isIcrc7) {
       setError("Send supports ICRC-7 and EXT collections only.");
+      return;
+    }
+    if (parsedDest.subaccount.length > 0 && !isIcrc7) {
+      setError("EXT sends need a principal. ICRC-7 can take an account with a subaccount.");
       return;
     }
     const ok = await requestSpendReview({
@@ -1274,6 +1278,7 @@ export function App() {
             ledgerId: sendNft.contractId,
             tokenId: BigInt(sendNft.tokenId),
             to: dest,
+            toSubaccount: parsedDest.subaccount,
             payFee: true,
           })
         : await executeExtSend({
@@ -1389,11 +1394,18 @@ export function App() {
       return;
     }
     if (parsedDest.kind !== "principal") {
-      setError("NFT sends require a principal destination");
+      setError("NFT sends require a principal or ICRC account");
       return;
     }
-    const dest = parsedDest.value;
+    const dest = parsedDest.owner;
     const targets = sendableSelected.slice(0, NFT_BULK_SEND_UI_CAP);
+    if (
+      parsedDest.subaccount.length > 0 &&
+      targets.some((n) => n.standard !== "icrc7")
+    ) {
+      setError("A subaccount destination only works when every selected NFT is ICRC-7.");
+      return;
+    }
     if (!targets.length) {
       setError("Select ICRC-7 or EXT NFTs to send.");
       return;
@@ -1471,6 +1483,7 @@ export function App() {
       const result = await executeBulkNftSend({
         identity: id,
         to: dest,
+        toSubaccount: parsedDest.subaccount,
         items: targets.map((n) => ({
           key: nftKey(n),
           name: n.name,

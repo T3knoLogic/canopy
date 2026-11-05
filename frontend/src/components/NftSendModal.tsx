@@ -112,7 +112,7 @@ export function NftSendModal({
               ref={toRef}
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              placeholder="aaaaa-…"
+              placeholder="principal or ICRC account"
               autoComplete="off"
               spellCheck={false}
               disabled={busy}

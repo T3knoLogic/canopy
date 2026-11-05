@@ -267,7 +267,8 @@ export function needsAmountStepUp(
 }
 
 /**
- * Force a fresh II login when amount is large or session was only restored from storage.
+ * Force a fresh II login for a large amount, or when the caller sets force.
+ * A restored session can send below the step-up threshold without a second prompt.
  */
 export async function ensureStepUpIfNeeded(opts: {
   amount?: bigint;
@@ -282,10 +283,12 @@ export async function ensureStepUpIfNeeded(opts: {
       opts.decimals ?? 8,
       opts.isIcpLedger ?? false,
     );
-  const need =
-    opts.force === true ||
-    amountNeed ||
-    restoredSessionPendingStepUp;
+  // A restored session may send under the step-up threshold without a second
+  // Internet Identity prompt. At or above the threshold, and on force, still step up.
+  if (restoredSessionPendingStepUp && !amountNeed && opts.force !== true) {
+    restoredSessionPendingStepUp = false;
+  }
+  const need = opts.force === true || amountNeed || restoredSessionPendingStepUp;
   if (!need) {
     const c = await getAuthClient();
     if (!(await c.isAuthenticated())) {

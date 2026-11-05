@@ -64,9 +64,10 @@ Integrators do not need that build. Use the hosted wallet and `sdk/canopy.js`.
 
 | Asset | Destination |
 |-------|-------------|
-| ICP | Principal **or** 64-character Account ID (checksum checked) |
-| Other ICRC-1 tokens | Principal only |
-| ICRC-7 / EXT NFTs | Principal only |
+| ICP | Principal, ICRC-1 account (`principal-<base32 checksum>.<subaccount>`), **or** 64-character Account ID (checksum checked) |
+| Other ICRC-1 tokens | Principal or ICRC account |
+| ICRC-7 NFTs | Principal or ICRC account |
+| EXT NFTs | Principal only |
 | DIP721 | Not sent inside Canopy — [IC NFT Migrator](https://cy2qi-siaaa-aaaau-ag32a-cai.icp0.io) |
 
-Default subaccount only. Funds in another subaccount do not show and cannot be sent from Canopy.
+Sends **to** a non-default subaccount use the ICRC account text. Balances Canopy shows, and sends **from** this wallet, are still the default subaccount.

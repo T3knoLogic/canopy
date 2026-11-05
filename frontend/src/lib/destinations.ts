@@ -6,6 +6,7 @@
  * the ledger traps on bad checksums, so we validate CRC before SpendReview / fee payment.
  */
 import { Principal } from "@dfinity/principal";
+import { bigEndianCrc32, encodeBase32 } from "@dfinity/utils";
 
 const RECENT_KEY = "canopy.recent.recipients.v1";
 const MAX_RECENT = 8;
@@ -13,7 +14,16 @@ const MAX_RECENT = 8;
 export type DestKind = "principal" | "accountId";
 
 export type ParsedDestination =
-  | { ok: true; kind: DestKind; value: string; label: string }
+  | {
+      ok: true;
+      kind: DestKind;
+      value: string;
+      label: string;
+      /** Principal that owns the destination. Same as value when there is no subaccount. */
+      owner: string;
+      /** ICRC-1 destination subaccount. Empty means the default account. */
+      subaccount: [] | [Uint8Array];
+    }
   | { ok: false; error: string };
 
 const CRC32_TABLE = (() => {
@@ -77,10 +87,94 @@ export function isValidAccountIdChecksum(raw: string): boolean {
   }
 }
 
-/** Parse principal or 64-char ICP Account Identifier (checksum required). */
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+/**
+ * ICRC-1 textual account (ICRC-1 TextualEncoding):
+ * `principal` or `principal-<base32 crc32>.<subaccount hex>`.
+ * Subaccount hex may omit leading zeros. Checksum covers owner bytes ‖ 32-byte subaccount.
+ */
+function parseIcrcAccountText(raw: string): ParsedDestination | null {
+  const text = raw.trim().toLowerCase();
+  const parts = text.split(".");
+  if (parts.length === 1) return null;
+  if (parts.length !== 2) {
+    return { ok: false, error: "ICRC account should contain a single '.'" };
+  }
+  const principalAndChecksum = parts[0] ?? "";
+  const subHex = parts[1] ?? "";
+  if (!/^[0-9a-f]{1,64}$/.test(subHex)) {
+    return {
+      ok: false,
+      error: "ICRC account subaccount must be 1–64 hex characters",
+    };
+  }
+  const pieces = principalAndChecksum.split("-");
+  if (pieces.length < 2) {
+    return {
+      ok: false,
+      error: "ICRC account should be principal-checksum.subaccount",
+    };
+  }
+  const checksum = pieces[pieces.length - 1] ?? "";
+  const principalText = pieces.slice(0, -1).join("-");
+  let owner: Principal;
+  try {
+    owner = Principal.fromText(principalText);
+  } catch {
+    return {
+      ok: false,
+      error: "ICRC account principal is invalid",
+    };
+  }
+  if (owner.isAnonymous()) {
+    return { ok: false, error: "Anonymous principal is not a valid destination" };
+  }
+  const sub = hexToBytes(subHex.padStart(64, "0"));
+  const crc = bigEndianCrc32(new Uint8Array([...owner.toUint8Array(), ...sub]));
+  const expected = encodeBase32(crc);
+  if (expected !== checksum) {
+    return {
+      ok: false,
+      error:
+        "ICRC account checksum is invalid — paste the full account, including the subaccount",
+    };
+  }
+  const zero = sub.every((b) => b === 0);
+  const subCanon = subHex.replace(/^0+/, "");
+  if (zero || subCanon.length === 0) {
+    return {
+      ok: true,
+      kind: "principal",
+      value: owner.toText(),
+      label: "Principal",
+      owner: owner.toText(),
+      subaccount: [],
+    };
+  }
+  return {
+    ok: true,
+    kind: "principal",
+    value: `${owner.toText()}-${expected}.${subCanon}`,
+    label: "ICRC account",
+    owner: owner.toText(),
+    subaccount: [sub],
+  };
+}
+
+/** Parse principal, ICRC account (with subaccount), or 64-char ICP Account Identifier. */
 export function parseDestination(raw: string): ParsedDestination {
   const t = raw.trim();
   if (!t) return { ok: false, error: "Destination required" };
+
+  const icrc = parseIcrcAccountText(t);
+  if (icrc) return icrc;
 
   if (isAccountIdHex(t)) {
     const value = normalizeAccountIdHex(t);
@@ -96,6 +190,8 @@ export function parseDestination(raw: string): ParsedDestination {
       kind: "accountId",
       value,
       label: "Account ID",
+      owner: "",
+      subaccount: [],
     };
   }
 
@@ -109,12 +205,14 @@ export function parseDestination(raw: string): ParsedDestination {
       kind: "principal",
       value: p.toText(),
       label: "Principal",
+      owner: p.toText(),
+      subaccount: [],
     };
   } catch {
     return {
       ok: false,
       error:
-        "Enter an Internet Identity principal or a 64-character ICP Account ID",
+        "Enter a principal, an ICRC account (principal-checksum.subaccount), or a 64-character ICP Account ID",
     };
   }
 }
